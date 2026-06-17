@@ -1,0 +1,39 @@
+Q01 velocity check · SQL
+-- ============================================================
+--  Q1: VELOCITY CHECK
+--  Detects customers with 3+ transactions within a 10-minute window
+--  Fraud Pattern: Rapid card testing or account takeover
+--  Technique: Correlated subquery with DATEADD window
+-- ============================================================
+ 
+USE FraudAnalytics;
+GO
+ 
+WITH windowed AS (
+    SELECT
+        t1.txn_id,
+        t1.customer_id,
+        t1.txn_timestamp,
+        t1.amount,
+        (
+            SELECT COUNT(*)
+            FROM transactions t2
+            WHERE t2.customer_id   = t1.customer_id
+              AND t2.status        = 'APPROVED'
+              AND t2.txn_timestamp >= DATEADD(MINUTE, -10, t1.txn_timestamp)
+              AND t2.txn_timestamp <= t1.txn_timestamp
+        ) AS txns_in_10min
+    FROM transactions t1
+    WHERE t1.status = 'APPROVED'
+)
+SELECT
+    customer_id,
+    txn_id,
+    txn_timestamp,
+    amount,
+    txns_in_10min
+FROM windowed
+WHERE txns_in_10min >= 3
+ORDER BY customer_id, txn_timestamp;
+GO
+ 
