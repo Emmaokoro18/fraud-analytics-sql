@@ -1,0 +1,36 @@
+-- ============================================================
+--  Q5: HIGH-RISK MERCHANT EXPOSURE
+--  Ranks customers by total spend at HIGH risk tier merchants
+--  Fraud Pattern: Gambling, luxury goods, travel abuse
+--  Technique: CTE + RANK() window function
+-- ============================================================
+
+USE FraudAnalytics;
+
+
+WITH high_risk_spend AS (
+    SELECT
+        t.customer_id,
+        c.full_name,
+        m.merchant_name,
+        m.category,
+        SUM(t.amount) AS total_spend,
+        COUNT(*)      AS txn_count
+    FROM transactions t
+    JOIN customers c ON t.customer_id = c.customer_id
+    JOIN merchants m ON t.merchant_id = m.merchant_id
+    WHERE m.risk_tier = 'HIGH'
+      AND t.status    = 'APPROVED'
+    GROUP BY t.customer_id, c.full_name, m.merchant_name, m.category
+)
+SELECT
+    customer_id,
+    full_name,
+    merchant_name,
+    category,
+    txn_count,
+    total_spend,
+    RANK() OVER (ORDER BY total_spend DESC) AS spend_rank
+FROM high_risk_spend
+ORDER BY spend_rank;
+GO
